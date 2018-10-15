@@ -1,4 +1,5 @@
 import socket
+from dataclasses import dataclass
 
 import requests
 import urllib3
@@ -6,21 +7,25 @@ from requests import get
 from requests.exceptions import ConnectionError
 from contextlib import closing
 from bs4 import BeautifulSoup
-
-"""
-based on
-https://realpython.com/python-web-scraping-practical-introduction/
-"""
+import html5lib
 
 
-def get_gigs(html_content):
+@dataclass
+class Gig:
+    title: str
+    href: str
+    processed: bool = False
 
-    soup = BeautifulSoup(html_content, 'html.parser')
-    # for all direct children
-    table_contents = soup.find("div", {"class": "table_info tbl_repertoire"}).findAll("a", recursive=True)
-    # asa = table_contents.findAll("a", recursive=False)
-    # titles = soup.find("div", {"class": "table_info tbl_repertoire"}.findAll("a", recursive=False))
-    f = 1
+
+def get_gigs(html_content) -> list:
+    gigs = []
+    soup = BeautifulSoup(html_content, 'html5lib')
+    list_of_gigs = soup.find("div", {"class": "table_info tbl_repertoire"}, recursive=True).find_all("div", {"class": "title"}, recursive=True)
+
+    for event_soup in list_of_gigs:
+        event = event_soup.find('a')
+        gigs.append( Gig(title=event.attrs['title'].split('Kup bilet - ')[1], href=event.attrs['href']))
+    return gigs
 
 
 def get_content(url: str) -> object:
@@ -36,4 +41,4 @@ if __name__ == '__main__':
 
     url = "https://tickets.klubzak.com.pl/"
     raw_html_content = get_content(url)
-    get_gigs(raw_html_content)
+    [print(gig.title) for gig in get_gigs(raw_html_content)]
